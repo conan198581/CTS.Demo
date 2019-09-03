@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using General.Core;
 using General.Core.Data;
+using General.Core.Librs;
 using General.Entites;
 using General.Services.Category;
 using General.Services.Role;
@@ -43,8 +45,8 @@ namespace General.Mvc
             {
                 options.UseSqlServer(Configuration.GetConnectionString("Default"));
             });
-            services.AddScoped<ICategoryService, CategoryService>();
-            services.AddScoped<IRoleService, RoleService>();
+            //services.AddScoped<ICategoryService, CategoryService>();
+            //services.AddScoped<IRoleService, RoleService>();
 
             var provider = services.BuildServiceProvider();
             EngineContext.Initialize(new GeneralEngine(provider));
@@ -53,6 +55,22 @@ namespace General.Mvc
             services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
 
             //services.BuildServiceProvider().GetService<ICategoryService>();
+
+
+            //通过程序集 注入
+            Assembly assembly = RuntimeHelper.GetAssemblyByName("General.Services");
+            var types = assembly.GetTypes();
+            var typelist = types.Where(x => x.IsClass && !x.IsAbstract && !x.IsGenericType);
+            foreach (var type in typelist)
+            {
+                var interfaces = type.GetInterfaces();
+                if (interfaces.Any())
+                {
+                    //接口取第一个
+                    var interfaceItem = interfaces.First();
+                    services.AddScoped(interfaceItem, type);
+                }
+            }
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
